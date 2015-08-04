@@ -2,9 +2,8 @@
 // AbstractScreen.debug = true;
 // ScreenManager.debug = true;
 
-
 function testMobile() {
-    return false;// Modernizr.touch || window.innerWidth < 600;
+    return false;// Modernizr.touch || window.innerWidth < 600
 }
 
 var SOCKET = null;

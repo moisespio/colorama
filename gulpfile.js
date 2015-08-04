@@ -6,12 +6,10 @@ var livereload = require('gulp-livereload');
 
 var base = './';
 var source = base + 'sources/';
-var compiled = base + 'public/';
+var compiled = base + 'www/public/';
 
 gulp.task('scripts', function() {
 	return gulp.src([
-		source + 'scripts/Levels.js',
-		source + 'scripts/framework/**/*.js',
 		source + 'scripts/application/**/*.js',
 		source + 'scripts/main.js'
 	]).pipe(concat('all.js')).pipe(gulp.dest(compiled + 'scripts')).pipe(livereload());
