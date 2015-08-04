@@ -2,6 +2,7 @@
 var Application = AbstractApplication.extend({
 	init:function(){
         this._super(windowWidth, windowHeight);
+        this.stage.setBackgroundColor(0xffffff);
 	},
     build:function(){
         this._super();
@@ -13,17 +14,17 @@ var Application = AbstractApplication.extend({
         this.homeScreen = new HomeScreen('Home');
         this.screenManager.addScreen(this.gameScreen);
         this.screenManager.addScreen(this.homeScreen);
-        this.screenManager.change('Home');
+        this.screenManager.change('Game');
     },
 });
 
-/*jshint undef:false */
 var Ball = Class.extend({
 	init:function(){
 		this.entityContainer = new PIXI.DisplayObjectContainer();
 		this.graphics = new PIXI.Graphics();
 		this.graphics.beginFill(0x553388);
-		this.graphics.drawCircle(0,0,30);
+		this.radius = 30;
+		this.graphics.drawCircle(0,0,this.radius);
 		this.entityContainer.addChild(this.graphics);
 		this.velocity = {x:0,y:0};
 		this.jumpForce = 8;
@@ -36,6 +37,34 @@ var Ball = Class.extend({
 	update:function(){
 		this.entityContainer.position.x += this.velocity.x;
 		this.entityContainer.position.y += this.velocity.y;
+	},
+	getContent:function(){
+		return this.entityContainer;
+	}
+});
+
+var Wall = Class.extend({
+	init:function(width, height, borderAngle){
+		this.entityContainer = new PIXI.DisplayObjectContainer();
+		this.graphics = new PIXI.Graphics();
+		this.graphics.beginFill(Math.random() * 0xFFFFFF);
+		var diagonal = Math.sin(borderAngle / 180 * Math.PI)*height;
+		this.graphics.moveTo(- diagonal,height);
+		this.graphics.lineTo(width + diagonal, height);
+		this.graphics.lineTo(width,0)
+		this.graphics.lineTo(0,0)
+
+		this.entityContainer.addChild(this.graphics);
+		this.graphics.x = - (this.graphics.width - diagonal * 2) / 2;
+		this.graphics.y = - this.graphics.height/2;
+
+		this.marker = new PIXI.Graphics();
+		this.marker.beginFill(0xFF0000);
+		this.marker.drawCircle(0,0,1);
+		this.entityContainer.addChild(this.marker);
+	},
+	update:function(){
+		//this.entityContainer.rotation += 0.01;
 	},
 	getContent:function(){
 		return this.entityContainer;
@@ -975,7 +1004,6 @@ var AppModel = Class.extend({
 var GameScreen = AbstractScreen.extend({
     init: function (label) {
         this._super(label);
-
     },
     destroy: function () {
         this._super();
@@ -984,6 +1012,7 @@ var GameScreen = AbstractScreen.extend({
         this._super();
         this.gravity = windowHeight * 0.0001;
         this.polygonRadius = windowWidth * 0.25;
+        this.sides = 7;
         this.gameContainer = new PIXI.DisplayObjectContainer();
         this.addChild(this.gameContainer);
         var assetsToLoader = [];
@@ -1005,17 +1034,53 @@ var GameScreen = AbstractScreen.extend({
         this.ball.getContent().position.x = windowWidth /2;
         this.ball.getContent().position.y = windowHeight /2;
         this.ball.jumpForce = this.gravity * 70;
+
+        this.polygonContainer = new PIXI.DisplayObjectContainer();
+        this.polygonContainer.position.x = windowWidth/2;
+        this.polygonContainer.position.y = windowHeight/2;
+        var tempWall;
+
+        var tempAngle = 0;
+        this.arrayWalls = [];
+        var wallDistance = this.getDistanceBetweenWalls();
+        var tempBorderAngle = 360 / this.sides;
+        for (var i = 0; i < this.sides; i++) {
+            tempAngle = tempBorderAngle * i /180 * Math.PI;
+            tempWall = new Wall(wallDistance, 30, tempBorderAngle);
+            tempWall.getContent().position.x = Math.sin(tempAngle) * this.polygonRadius;
+            tempWall.getContent().position.y = Math.cos(tempAngle) * this.polygonRadius;
+            tempWall.getContent().rotation = -tempAngle;
+            this.arrayWalls.push(tempWall);
+            this.polygonContainer.addChild(tempWall.getContent());
+        };
+        this.gameContainer.addChild(this.polygonContainer);
+
+        var wall = new Wall(wallDistance, 30, tempBorderAngle)
+        this.gameContainer.addChild(wall.getContent())
+        wall.getContent().position.x = windowWidth / 2;
+        wall.getContent().position.y = 60;
     },
     update:function()
     {
+        for (var i = 0; i < this.arrayWalls.length; i++) {
+            this.arrayWalls[i].update();
+        };
+        //this.polygonContainer.rotation += 0.01;
         this.ball.velocity.y += this.gravity;
         if(this.ball.getContent().position.y > windowHeight / 2){
             this.testCollision();
         }
         this.ball.update();
     },
+    getDistanceBetweenWalls:function(){
+        var tempAngle = 360 / this.sides * 1 /180 * Math.PI;
+        var tempAngle2 = 360 / this.sides * 2 /180 * Math.PI;
+        var point1 = {x:Math.sin(tempAngle) * this.polygonRadius, y:Math.cos(tempAngle) * this.polygonRadius};
+        var point2 = {x:Math.sin(tempAngle2) * this.polygonRadius, y:Math.cos(tempAngle2) * this.polygonRadius};
+        return pointDistance(point1.x, point1.y, point2.x, point2.y)
+    },
     testCollision:function(){
-        if(pointDistance(this.ball.getContent().position.x, this.ball.getContent().position.y, windowWidth / 2, windowHeight / 2) > this.polygonRadius){
+        if(pointDistance(this.ball.getContent().position.x, this.ball.getContent().position.y, windowWidth / 2, windowHeight / 2) > this.polygonRadius - this.ball.radius){
             this.ball.jump();
         }
     }
@@ -1068,76 +1133,6 @@ var HomeScreen = AbstractScreen.extend({
     update:function()
     {
     }
-});
-
-/*jshint undef:false */
-var RainParticle = Class.extend({
-	init:function(fallSpeed,windSpeed,hArea,vArea,dir){
-		// 50, 5, 600, 300, 'left'
-
-		this.fallSpeed=fallSpeed;
-		this.windSpeed=windSpeed;
-		this.dir=dir;
-		this.hArea=hArea;
-		this.vArea=vArea;
-
-
-		this.texture = new PIXI.Texture.fromImage('dist/img/drop.png');
-		this.content = new PIXI.Sprite(this.texture);
-
-		this.content.position.x = Math.random() * hArea;
-		this.content.position.y=Math.random()*vArea;
-
-		this.gambAccum = 0;
-	},
-	update:function(){
-		var side = 1;
-		// this.gambAccum += 0.005;
-
-		switch (this.dir)
-		{
-			case 'left' :
-				// this.content.rotation = this.gambAccum;// / 180 * 3.14;
-				this.content.rotation = 15 / 180 * 3.14;
-				break;
-
-			case 'right' :
-				side = -1;
-				// this.content.rotation = -this.gambAccum;// / 180 * 3.14;
-				this.content.rotation = -15 / 180 * 3.14;
-
-				break;
-
-			default :
-				console.log('There is some error dude...');
-		}
-
-		// this.windSpeed = Math.cos(this.gambAccum) * 5;
-
-
-		// console.log(this.windSpeed);
-		// this.gambAccum ++;
-		// if(this.gambAccum > 200){
-		// 	this.gambAccum = 0;
-		// 	if(this.dir === 'left')
-		// 	{
-		// 		this.dir = 'right';
-		// 	}else
-		// 	{
-		// 		this.dir = 'left';
-		// 	}
-		// }
-
-
-		this.content.position.x-=this.windSpeed * side;
-		this.content.position.y+=Math.random()*this.fallSpeed;
-
-		if (this.content.position.y>this.vArea)
-		{
-			this.content.position.x = Math.random() * (this.hArea);
-			this.content.position.y =- 200;
-		}
-	}
 });
 
 /*jshint undef:false */
@@ -1224,6 +1219,76 @@ var InputManager = Class.extend({
         }
         return exists;
     },
+});
+
+/*jshint undef:false */
+var RainParticle = Class.extend({
+	init:function(fallSpeed,windSpeed,hArea,vArea,dir){
+		// 50, 5, 600, 300, 'left'
+
+		this.fallSpeed=fallSpeed;
+		this.windSpeed=windSpeed;
+		this.dir=dir;
+		this.hArea=hArea;
+		this.vArea=vArea;
+
+
+		this.texture = new PIXI.Texture.fromImage('dist/img/drop.png');
+		this.content = new PIXI.Sprite(this.texture);
+
+		this.content.position.x = Math.random() * hArea;
+		this.content.position.y=Math.random()*vArea;
+
+		this.gambAccum = 0;
+	},
+	update:function(){
+		var side = 1;
+		// this.gambAccum += 0.005;
+
+		switch (this.dir)
+		{
+			case 'left' :
+				// this.content.rotation = this.gambAccum;// / 180 * 3.14;
+				this.content.rotation = 15 / 180 * 3.14;
+				break;
+
+			case 'right' :
+				side = -1;
+				// this.content.rotation = -this.gambAccum;// / 180 * 3.14;
+				this.content.rotation = -15 / 180 * 3.14;
+
+				break;
+
+			default :
+				console.log('There is some error dude...');
+		}
+
+		// this.windSpeed = Math.cos(this.gambAccum) * 5;
+
+
+		// console.log(this.windSpeed);
+		// this.gambAccum ++;
+		// if(this.gambAccum > 200){
+		// 	this.gambAccum = 0;
+		// 	if(this.dir === 'left')
+		// 	{
+		// 		this.dir = 'right';
+		// 	}else
+		// 	{
+		// 		this.dir = 'left';
+		// 	}
+		// }
+
+
+		this.content.position.x-=this.windSpeed * side;
+		this.content.position.y+=Math.random()*this.fallSpeed;
+
+		if (this.content.position.y>this.vArea)
+		{
+			this.content.position.x = Math.random() * (this.hArea);
+			this.content.position.y =- 200;
+		}
+	}
 });
 
 /*jshint undef:false */
@@ -1462,7 +1527,9 @@ var DefaultBehaviour = Class.extend({
 /*jshint undef:false */
 // AbstractScreen.debug = true;
 // ScreenManager.debug = true;
-
+var pointDistance = function(x, y, x0, y0){
+    return Math.sqrt((x -= x0) * x + (y -= y0) * y);
+};
 function testMobile() {
     return false;// Modernizr.touch || window.innerWidth < 600
 }
@@ -1509,9 +1576,7 @@ var initialize = function(){
 	};
 	$(App.init);
 })();
-var pointDistance = function(x, y, x0, y0){
-    return Math.sqrt((x -= x0) * x + (y -= y0) * y);
-};
+
 
 
 

@@ -1,7 +1,9 @@
 /*jshint undef:false */
 // AbstractScreen.debug = true;
 // ScreenManager.debug = true;
-
+var pointDistance = function(x, y, x0, y0){
+    return Math.sqrt((x -= x0) * x + (y -= y0) * y);
+};
 function testMobile() {
     return false;// Modernizr.touch || window.innerWidth < 600
 }
@@ -48,9 +50,7 @@ var initialize = function(){
 	};
 	$(App.init);
 })();
-var pointDistance = function(x, y, x0, y0){
-    return Math.sqrt((x -= x0) * x + (y -= y0) * y);
-};
+
 
 
 
