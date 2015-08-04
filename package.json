@@ -1,0 +1,16 @@
+{
+	"name": "colorama",
+	"version": "1.0.0",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Goya BPD",
+	"license": "ISC",
+	"devDependencies": {
+		"gulp": "^3.8.11",
+		"gulp-concat": "^2.5.2",
+		"gulp-livereload": "^3.8.0",
+		"gulp-uglify": "^1.2.0"
+	}
+}
